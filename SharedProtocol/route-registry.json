@@ -1,0 +1,44 @@
+{
+  "scheme": "app",
+  "format": "app://{stack}/{page}?{params}",
+  "routes": [
+    {
+      "url": "app://native/home",
+      "stack": "native",
+      "description": "Native hub/launcher page"
+    },
+    {
+      "url": "app://native/demo",
+      "stack": "native",
+      "description": "Native communication demo page"
+    },
+    {
+      "url": "app://rn/home",
+      "stack": "rn",
+      "description": "React Native home page"
+    },
+    {
+      "url": "app://rn/detail",
+      "stack": "rn",
+      "params": {"id": "string"},
+      "description": "React Native detail page"
+    },
+    {
+      "url": "app://flutter/home",
+      "stack": "flutter",
+      "description": "Flutter home page"
+    },
+    {
+      "url": "app://flutter/detail",
+      "stack": "flutter",
+      "params": {"id": "string"},
+      "description": "Flutter detail page"
+    },
+    {
+      "url": "app://webview",
+      "stack": "webview",
+      "params": {"url": "string"},
+      "description": "WebView container, loads the specified URL"
+    }
+  ]
+}

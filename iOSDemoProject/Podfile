@@ -1,0 +1,49 @@
+platform :ios, '15.0'
+
+# React Native pods path (adjust based on your node_modules location)
+# require_relative '../ReactNativeModule/node_modules/react-native/scripts/react_native_pods'
+# require_relative '../ReactNativeModule/node_modules/@react-native-community/cli-platform-ios/native_modules'
+
+# Flutter pod path
+# flutter_application_path = '../FlutterModule'
+# load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')
+
+target 'iOSDemoProject' do
+  use_frameworks!
+
+  # ========================================
+  # React Native Dependencies
+  # ========================================
+  # Uncomment after running `npm install` in ReactNativeModule/:
+  #
+  # use_react_native!(
+  #   :path => '../ReactNativeModule/node_modules/react-native',
+  #   :hermes_enabled => true
+  # )
+
+  # ========================================
+  # Flutter Dependencies
+  # ========================================
+  # Uncomment after running `flutter pub get` in FlutterModule/:
+  #
+  # install_all_flutter_pods(flutter_application_path)
+
+  target 'iOSDemoProjectTests' do
+    inherit! :search_paths
+  end
+
+  target 'iOSDemoProjectUITests' do
+  end
+end
+
+# ========================================
+# Post-install configuration
+# ========================================
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+  # flutter_post_install(installer) if defined?(flutter_post_install)
+end

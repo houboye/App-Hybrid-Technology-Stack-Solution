@@ -1,0 +1,19 @@
+name: flutter_module
+description: Flutter module for hybrid app integration demo
+publish_to: 'none'
+
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  uuid: ^4.0.0
+
+flutter:
+  module:
+    androidX: true
+    androidPackage: com.by.flutter_module
+    iosBundleIdentifier: com.by.flutterModule

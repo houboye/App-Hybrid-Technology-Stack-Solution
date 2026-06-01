@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EventMessage",
+  "description": "Unified cross-stack communication message format",
+  "type": "object",
+  "required": ["id", "type", "channel", "source", "target", "payload", "timestamp"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique message identifier"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["request", "response", "notification", "broadcast"],
+      "description": "Message type: request expects response, notification is one-way, broadcast goes to all"
+    },
+    "channel": {
+      "type": "string",
+      "description": "Topic/channel name for routing messages to handlers"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["native", "rn", "flutter", "webview"],
+      "description": "Tech stack that sent this message"
+    },
+    "target": {
+      "type": "string",
+      "enum": ["native", "rn", "flutter", "webview", "*"],
+      "description": "Intended recipient. '*' means broadcast to all"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Arbitrary JSON data"
+    },
+    "callbackId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Present for request/response pairs. Response must echo the request's callbackId"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix timestamp in milliseconds"
+    }
+  }
+}

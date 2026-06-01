@@ -1,0 +1,50 @@
+# === macOS ===
+.DS_Store
+*.swp
+*~
+
+# === iOS ===
+iOSDemoProject/build/
+iOSDemoProject/DerivedData/
+iOSDemoProject/Pods/
+iOSDemoProject/*.xcworkspace
+iOSDemoProject/Podfile.lock
+*.xcuserstate
+*.xcscmblueprint
+xcuserdata/
+
+# === Android ===
+AndroidDemoProject/.gradle/
+AndroidDemoProject/build/
+AndroidDemoProject/app/build/
+AndroidDemoProject/local.properties
+AndroidDemoProject/.idea/
+AndroidDemoProject/captures/
+*.apk
+*.aab
+
+# === React Native ===
+ReactNativeModule/node_modules/
+ReactNativeModule/ios/Pods/
+ReactNativeModule/ios/build/
+ReactNativeModule/android/build/
+ReactNativeModule/android/app/build/
+ReactNativeModule/.metro-health-check*
+
+# === Flutter ===
+FlutterModule/.dart_tool/
+FlutterModule/.packages
+FlutterModule/build/
+FlutterModule/.flutter-plugins
+FlutterModule/.flutter-plugins-dependencies
+FlutterModule/.android/
+FlutterModule/.ios/
+
+# === IDE ===
+.idea/
+.vscode/
+*.iml
+
+# === Misc ===
+*.log
+*.tmp
