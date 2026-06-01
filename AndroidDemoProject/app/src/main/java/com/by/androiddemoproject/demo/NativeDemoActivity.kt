@@ -18,6 +18,7 @@ import com.by.androiddemoproject.eventbus.*
 import com.by.androiddemoproject.router.AppRouter
 import com.by.androiddemoproject.router.Routes
 import com.by.androiddemoproject.ui.theme.AndroidDemoProjectTheme
+import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
@@ -25,40 +26,61 @@ import java.util.*
 class NativeDemoActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val route = intent.getStringExtra(AppRouter.EXTRA_ROUTE) ?: Routes.NATIVE_DEMO
+        AppRouter.registerActivity(this, route)
         setContent {
             AndroidDemoProjectTheme {
                 NativeDemoScreen(
-                    onNavigate = { url -> AppRouter.navigate(this, url) }
+                    onNavigate = { url -> AppRouter.navigate(this, url) },
+                    onNavigateWithData = { url, data -> AppRouter.navigate(this, url, data) },
+                    onRemovePage = { route -> AppRouter.removePage(route) },
+                    onGetStack = { AppRouter.getNavigationStack() }
                 )
             }
         }
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        AppRouter.unregisterActivity(this)
+    }
 }
 
 @Composable
-fun NativeDemoScreen(onNavigate: (String) -> Unit) {
+fun NativeDemoScreen(
+    onNavigate: (String) -> Unit,
+    onNavigateWithData: (String, JSONObject) -> Unit,
+    onRemovePage: (String) -> Unit,
+    onGetStack: () -> List<Map<String, String>>
+) {
     val eventLog = remember { mutableStateListOf<String>() }
     var responseText by remember { mutableStateOf("") }
     val timeFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
     fun appendLog(text: String) {
         val time = timeFormat.format(Date())
-        eventLog.add("$time - $text")
+        eventLog.add("$time $text")
         if (eventLog.size > 50) eventLog.removeAt(0)
     }
 
     LaunchedEffect(Unit) {
         EventBus.subscribe("greeting") { msg ->
-            appendLog("[${msg.source.name}] greeting: ${msg.payload}")
+            appendLog("[EventBus] [${msg.source.name}] greeting: ${msg.payload}")
         }
         EventBus.subscribe("themeChanged") { msg ->
-            appendLog("[${msg.source.name}] themeChanged: ${msg.payload}")
+            appendLog("[EventBus] [${msg.source.name}] themeChanged: ${msg.payload}")
         }
         EventBus.subscribe("analytics") { msg ->
-            appendLog("[${msg.source.name}] analytics: ${msg.payload}")
+            appendLog("[EventBus] [${msg.source.name}] analytics: ${msg.payload}")
+        }
+        EventBus.subscribe("pageResult") { msg ->
+            appendLog("[PageResult] [${msg.source.name}] ${msg.payload}")
+        }
+        EventBus.subscribe("navigationLifecycle") { msg ->
+            appendLog("[Lifecycle] ${msg.payload}")
         }
         EventBus.subscribe("getUserInfo") { msg ->
-            appendLog("[${msg.source.name}] getUserInfo request received")
+            appendLog("[EventBus] [${msg.source.name}] getUserInfo request")
             if (msg.type == MessageType.request && msg.callbackId != null) {
                 val response = EventMessage(
                     type = MessageType.response,
@@ -71,6 +93,16 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
                 EventBus.dispatch(response)
             }
         }
+
+        AppRouter.onNavigationEvent("pushCompleted") { info ->
+            appendLog("[Lifecycle] pushCompleted: ${info.route}")
+        }
+        AppRouter.onNavigationEvent("popCompleted") { info ->
+            appendLog("[Lifecycle] popCompleted: ${info.route}")
+        }
+        AppRouter.onNavigationEvent("removeCompleted") { info ->
+            appendLog("[Lifecycle] removeCompleted: ${info.route}")
+        }
     }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -82,12 +114,12 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("📱 Native Demo", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
-            Text("Communication & Routing Test", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("All Communication Flows", fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Communication section
-            Text("Communication", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+            // === EventBus Communication ===
+            Text("EventBus Communication", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -95,9 +127,9 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
                 onClick = {
                     EventBus.sendRequest(StackId.rn, "getUserInfo", JSONObject().put("userId", "1")) { response ->
                         responseText = "RN: ${response.payload}"
-                        appendLog("Got RN response: ${response.payload}")
+                        appendLog("[EventBus] RN response: ${response.payload}")
                     }
-                    appendLog("Sent request to RN: getUserInfo")
+                    appendLog("[EventBus] Sent request to RN: getUserInfo")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
@@ -109,9 +141,9 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
                 onClick = {
                     EventBus.sendRequest(StackId.flutter, "getStatus") { response ->
                         responseText = "Flutter: ${response.payload}"
-                        appendLog("Got Flutter response: ${response.payload}")
+                        appendLog("[EventBus] Flutter response: ${response.payload}")
                     }
-                    appendLog("Sent request to Flutter: getStatus")
+                    appendLog("[EventBus] Sent request to Flutter: getStatus")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
@@ -122,7 +154,7 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
             Button(
                 onClick = {
                     EventBus.broadcast("announcement", JSONObject().put("message", "Hello from Native!"))
-                    appendLog("Broadcast sent: announcement")
+                    appendLog("[EventBus] Broadcast: announcement")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
@@ -133,7 +165,7 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
             Button(
                 onClick = {
                     EventBus.sendNotification(StackId.webview, "update", JSONObject().put("action", "refresh"))
-                    appendLog("Notification sent to WebView: update")
+                    appendLog("[EventBus] Notification to WebView: update")
                 },
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
@@ -146,22 +178,110 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Navigation section
-            Text("Navigation", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+            // === PageData Transfer ===
+            Text("PageData Transfer", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    val data = JSONObject().apply {
+                        put("user", JSONObject().put("name", "John").put("age", 30))
+                        put("items", JSONArray(listOf(1, 2, 3, 4, 5)))
+                        put("fromPage", "NativeDemo")
+                    }
+                    onNavigateWithData(Routes.RN_HOME, data)
+                    appendLog("[PageData] Navigate to RN with user data")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))
+            ) { Text("Navigate to RN with Data") }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    val data = JSONObject().apply {
+                        put("config", JSONObject().put("theme", "dark").put("locale", "zh_CN"))
+                        put("message", "Data from Native via PageData")
+                    }
+                    onNavigateWithData(Routes.FLUTTER_HOME, data)
+                    appendLog("[PageData] Navigate to Flutter with config data")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF02569B))
+            ) { Text("Navigate to Flutter with Data") }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    val data = JSONObject().apply {
+                        put("products", JSONArray().apply {
+                            put(JSONObject().put("id", 1).put("name", "iPhone").put("price", 999))
+                            put(JSONObject().put("id", 2).put("name", "iPad").put("price", 799))
+                        })
+                        put("currency", "USD")
+                    }
+                    onNavigateWithData(Routes.webview("local://webHome.html"), data)
+                    appendLog("[PageData] Navigate to WebView with products data")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9800))
+            ) { Text("Navigate to WebView with Data") }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // === Navigation Control ===
+            Text("Navigation Control", fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.fillMaxWidth())
             Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedButton(onClick = { onNavigate(Routes.RN_HOME) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Open React Native")
+                Text("Open RN Page")
             }
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(onClick = { onNavigate(Routes.FLUTTER_HOME) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Open Flutter")
+                Text("Open Flutter Page")
             }
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedButton(onClick = { onNavigate(Routes.webview("local://webHome.html")) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Open WebView")
+                Text("Open WebView Page")
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = {
+                    onRemovePage(Routes.RN_HOME)
+                    appendLog("[Router] removePage: app://rn/home")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF44336))
+            ) { Text("Remove RN Page from Stack") }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = {
+                    onRemovePage(Routes.FLUTTER_HOME)
+                    appendLog("[Router] removePage: app://flutter/home")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFF44336))
+            ) { Text("Remove Flutter Page from Stack") }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = {
+                    val stack = onGetStack()
+                    val routes = stack.map { it["route"] ?: "?" }.joinToString(" → ")
+                    appendLog("[Router] Stack: $routes")
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF9C27B0))
+            ) { Text("Print Navigation Stack") }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -173,7 +293,7 @@ fun NativeDemoScreen(onNavigate: (String) -> Unit) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 100.dp, max = 200.dp),
+                    .heightIn(min = 100.dp, max = 250.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.small
             ) {

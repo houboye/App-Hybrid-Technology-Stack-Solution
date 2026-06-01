@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PageData",
+  "description": "Cross-stack page-to-page data transfer protocol. Supports passing arbitrary data between pages during navigation, independent of URL query parameters.",
+  "type": "object",
+  "required": ["dataId", "source", "target", "data", "timestamp"],
+  "properties": {
+    "dataId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique identifier for this data transfer, used by the target page to retrieve the data"
+    },
+    "source": {
+      "type": "string",
+      "enum": ["native", "rn", "flutter", "webview"],
+      "description": "Tech stack that sent this data"
+    },
+    "target": {
+      "type": "string",
+      "enum": ["native", "rn", "flutter", "webview"],
+      "description": "Tech stack intended to receive this data"
+    },
+    "route": {
+      "type": "string",
+      "description": "The route URL being navigated to (e.g., app://rn/detail?id=123)"
+    },
+    "data": {
+      "type": "object",
+      "description": "Arbitrary JSON data to pass to the target page"
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Unix timestamp in milliseconds when the data was created"
+    },
+    "ttl": {
+      "type": "integer",
+      "description": "Time to live in milliseconds. Data expires after this duration. Default: 300000 (5 minutes)",
+      "default": 300000
+    }
+  }
+}

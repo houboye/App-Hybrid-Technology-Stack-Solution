@@ -65,15 +65,11 @@
 		};
 		020A262F2FCD6C6600C91C20 /* iOSDemoProjectTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = iOSDemoProjectTests;
 			sourceTree = "<group>";
 		};
 		020A26392FCD6C6600C91C20 /* iOSDemoProjectUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = iOSDemoProjectUITests;
 			sourceTree = "<group>";
 		};
@@ -149,7 +145,6 @@
 				DFBDB6A1EE4D0F9E9D7D083E /* Pods-iOSDemoProjectTests.debug.xcconfig */,
 				C10FFDAC2F282FC5D1431340 /* Pods-iOSDemoProjectTests.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};

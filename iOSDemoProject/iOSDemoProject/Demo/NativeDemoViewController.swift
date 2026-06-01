@@ -11,6 +11,7 @@ class NativeDemoViewController: UIViewController {
         view.backgroundColor = .systemBackground
         setupUI()
         setupEventListeners()
+        setupNavigationLifecycleListeners()
     }
 
     private func setupUI() {
@@ -46,7 +47,7 @@ class NativeDemoViewController: UIViewController {
         contentView.addArrangedSubview(header)
 
         let subtitle = UILabel()
-        subtitle.text = "Communication & Routing Test"
+        subtitle.text = "All Communication Flows"
         subtitle.font = .systemFont(ofSize: 16)
         subtitle.textColor = .secondaryLabel
         subtitle.textAlignment = .center
@@ -54,9 +55,8 @@ class NativeDemoViewController: UIViewController {
 
         addSpacer(to: contentView, height: 16)
 
-        // Communication section
-        let commTitle = sectionTitle("Communication")
-        contentView.addArrangedSubview(commTitle)
+        // === EventBus Communication ===
+        contentView.addArrangedSubview(sectionTitle("EventBus Communication"))
 
         contentView.addArrangedSubview(makeButton(title: "Send Request to RN", action: #selector(sendRequestToRN)))
         contentView.addArrangedSubview(makeButton(title: "Send Request to Flutter", action: #selector(sendRequestToFlutter)))
@@ -71,19 +71,32 @@ class NativeDemoViewController: UIViewController {
 
         addSpacer(to: contentView, height: 16)
 
-        // Navigation section
-        let navTitle = sectionTitle("Navigation")
-        contentView.addArrangedSubview(navTitle)
+        // === PageData Transfer ===
+        contentView.addArrangedSubview(sectionTitle("PageData Transfer"))
 
-        contentView.addArrangedSubview(makeButton(title: "Open React Native", action: #selector(openRN), style: .outlined))
-        contentView.addArrangedSubview(makeButton(title: "Open Flutter", action: #selector(openFlutter), style: .outlined))
-        contentView.addArrangedSubview(makeButton(title: "Open WebView", action: #selector(openWebView), style: .outlined))
+        contentView.addArrangedSubview(makeButton(title: "Navigate to RN with Data", action: #selector(navigateToRNWithData), style: .filled, color: .systemBlue))
+        contentView.addArrangedSubview(makeButton(title: "Navigate to Flutter with Data", action: #selector(navigateToFlutterWithData), style: .filled, color: .systemCyan))
+        contentView.addArrangedSubview(makeButton(title: "Navigate to WebView with Data", action: #selector(navigateToWebViewWithData), style: .filled, color: .systemOrange))
+
+        addSpacer(to: contentView, height: 16)
+
+        // === Navigation Control ===
+        contentView.addArrangedSubview(sectionTitle("Navigation Control"))
+
+        contentView.addArrangedSubview(makeButton(title: "Open RN Page", action: #selector(openRN), style: .outlined))
+        contentView.addArrangedSubview(makeButton(title: "Open Flutter Page", action: #selector(openFlutter), style: .outlined))
+        contentView.addArrangedSubview(makeButton(title: "Open WebView Page", action: #selector(openWebView), style: .outlined))
+
+        addSpacer(to: contentView, height: 8)
+
+        contentView.addArrangedSubview(makeButton(title: "Remove RN Page from Stack", action: #selector(removeRNPage), style: .outlined, color: .systemRed))
+        contentView.addArrangedSubview(makeButton(title: "Remove Flutter Page from Stack", action: #selector(removeFlutterPage), style: .outlined, color: .systemRed))
+        contentView.addArrangedSubview(makeButton(title: "Print Navigation Stack", action: #selector(printNavStack), style: .outlined, color: .systemPurple))
 
         addSpacer(to: contentView, height: 16)
 
         // Event log
-        let logTitle = sectionTitle("Event Log")
-        contentView.addArrangedSubview(logTitle)
+        contentView.addArrangedSubview(sectionTitle("Event Log"))
 
         logTextView.isEditable = false
         logTextView.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -92,22 +105,27 @@ class NativeDemoViewController: UIViewController {
         logTextView.text = "No events yet..."
         logTextView.textColor = .secondaryLabel
         logTextView.translatesAutoresizingMaskIntoConstraints = false
-        logTextView.heightAnchor.constraint(equalToConstant: 200).isActive = true
+        logTextView.heightAnchor.constraint(equalToConstant: 250).isActive = true
         contentView.addArrangedSubview(logTextView)
     }
 
+    // MARK: - Event Listeners
+
     private func setupEventListeners() {
         EventBus.shared.subscribe(channel: "greeting") { [weak self] message in
-            self?.appendLog("[\(message.source.rawValue)] greeting: \(message.payload)")
+            self?.appendLog("[EventBus] [\(message.source.rawValue)] greeting: \(message.payload)")
         }
         EventBus.shared.subscribe(channel: "themeChanged") { [weak self] message in
-            self?.appendLog("[\(message.source.rawValue)] themeChanged: \(message.payload)")
+            self?.appendLog("[EventBus] [\(message.source.rawValue)] themeChanged: \(message.payload)")
         }
         EventBus.shared.subscribe(channel: "analytics") { [weak self] message in
-            self?.appendLog("[\(message.source.rawValue)] analytics: \(message.payload)")
+            self?.appendLog("[EventBus] [\(message.source.rawValue)] analytics: \(message.payload)")
+        }
+        EventBus.shared.subscribe(channel: "pageResult") { [weak self] message in
+            self?.appendLog("[PageResult] [\(message.source.rawValue)] \(message.payload)")
         }
         EventBus.shared.subscribe(channel: "getUserInfo") { [weak self] message in
-            self?.appendLog("[\(message.source.rawValue)] getUserInfo request received")
+            self?.appendLog("[EventBus] [\(message.source.rawValue)] getUserInfo request")
             if message.type == .request, let callbackId = message.callbackId {
                 let response = EventMessage(
                     type: .response,
@@ -122,45 +140,81 @@ class NativeDemoViewController: UIViewController {
         }
     }
 
-    private func appendLog(_ text: String) {
-        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
-        eventLog.append("\(timestamp) - \(text)")
-        if eventLog.count > 50 { eventLog.removeFirst() }
-        logTextView.text = eventLog.joined(separator: "\n")
-        logTextView.textColor = .label
-        let bottom = NSRange(location: logTextView.text.count - 1, length: 1)
-        logTextView.scrollRangeToVisible(bottom)
+    private func setupNavigationLifecycleListeners() {
+        AppRouter.shared.onNavigationEvent(.pushCompleted) { [weak self] info in
+            self?.appendLog("[Lifecycle] pushCompleted: \(info.route)")
+        }
+        AppRouter.shared.onNavigationEvent(.popCompleted) { [weak self] info in
+            self?.appendLog("[Lifecycle] popCompleted: \(info.route)")
+        }
+        AppRouter.shared.onNavigationEvent(.removeCompleted) { [weak self] info in
+            self?.appendLog("[Lifecycle] removeCompleted: \(info.route)")
+        }
     }
 
-    // MARK: - Communication Actions
+    // MARK: - EventBus Actions
 
     @objc private func sendRequestToRN() {
         EventBus.shared.sendRequest(to: .rn, channel: "getUserInfo", payload: ["userId": AnyCodable("1")]) { [weak self] response in
             self?.responseLabel.text = "RN Response: \(response.payload)"
-            self?.appendLog("Got RN response: \(response.payload)")
+            self?.appendLog("[EventBus] RN response: \(response.payload)")
         }
-        appendLog("Sent request to RN: getUserInfo")
+        appendLog("[EventBus] Sent request to RN: getUserInfo")
     }
 
     @objc private func sendRequestToFlutter() {
         EventBus.shared.sendRequest(to: .flutter, channel: "getStatus", payload: [:]) { [weak self] response in
             self?.responseLabel.text = "Flutter Response: \(response.payload)"
-            self?.appendLog("Got Flutter response: \(response.payload)")
+            self?.appendLog("[EventBus] Flutter response: \(response.payload)")
         }
-        appendLog("Sent request to Flutter: getStatus")
+        appendLog("[EventBus] Sent request to Flutter: getStatus")
     }
 
     @objc private func broadcastToAll() {
         EventBus.shared.broadcast(channel: "announcement", payload: ["message": AnyCodable("Hello from Native!")])
-        appendLog("Broadcast sent: announcement")
+        appendLog("[EventBus] Broadcast: announcement")
     }
 
     @objc private func notifyWebView() {
         EventBus.shared.sendNotification(to: .webview, channel: "update", payload: ["action": AnyCodable("refresh")])
-        appendLog("Notification sent to WebView: update")
+        appendLog("[EventBus] Notification to WebView: update")
     }
 
-    // MARK: - Navigation Actions
+    // MARK: - PageData Actions
+
+    @objc private func navigateToRNWithData() {
+        let data: [String: Any] = [
+            "user": ["name": "John", "age": 30, "role": "developer"],
+            "items": [1, 2, 3, 4, 5],
+            "fromPage": "NativeDemo"
+        ]
+        AppRouter.shared.navigate(to: Routes.rnHome, data: data, from: self)
+        appendLog("[PageData] Navigate to RN with user data")
+    }
+
+    @objc private func navigateToFlutterWithData() {
+        let data: [String: Any] = [
+            "config": ["theme": "dark", "locale": "zh_CN"],
+            "message": "Data from Native via PageData",
+            "timestamp": Int64(Date().timeIntervalSince1970 * 1000)
+        ]
+        AppRouter.shared.navigate(to: Routes.flutterHome, data: data, from: self)
+        appendLog("[PageData] Navigate to Flutter with config data")
+    }
+
+    @objc private func navigateToWebViewWithData() {
+        let data: [String: Any] = [
+            "products": [
+                ["id": 1, "name": "iPhone", "price": 999],
+                ["id": 2, "name": "iPad", "price": 799]
+            ],
+            "currency": "USD"
+        ]
+        AppRouter.shared.navigate(to: Routes.webview(url: "local://webHome.html"), data: data, from: self)
+        appendLog("[PageData] Navigate to WebView with products data")
+    }
+
+    // MARK: - Navigation Control
 
     @objc private func openRN() {
         AppRouter.shared.navigate(to: Routes.rnHome, from: self)
@@ -174,11 +228,36 @@ class NativeDemoViewController: UIViewController {
         AppRouter.shared.navigate(to: Routes.webview(url: "local://webHome.html"), from: self)
     }
 
+    @objc private func removeRNPage() {
+        AppRouter.shared.removePage(route: Routes.rnHome)
+        appendLog("[Router] removePage: app://rn/home")
+    }
+
+    @objc private func removeFlutterPage() {
+        AppRouter.shared.removePage(route: Routes.flutterHome)
+        appendLog("[Router] removePage: app://flutter/home")
+    }
+
+    @objc private func printNavStack() {
+        let stack = AppRouter.shared.getNavigationStack()
+        appendLog("[Router] Stack: \(stack.map { $0["route"] ?? "?" }.joined(separator: " → "))")
+    }
+
     // MARK: - Helpers
+
+    private func appendLog(_ text: String) {
+        let timestamp = DateFormatter.localizedString(from: Date(), dateStyle: .none, timeStyle: .medium)
+        eventLog.append("\(timestamp) \(text)")
+        if eventLog.count > 50 { eventLog.removeFirst() }
+        logTextView.text = eventLog.joined(separator: "\n")
+        logTextView.textColor = .label
+        let bottom = NSRange(location: logTextView.text.count - 1, length: 1)
+        logTextView.scrollRangeToVisible(bottom)
+    }
 
     private enum ButtonStyle { case filled, outlined }
 
-    private func makeButton(title: String, action: Selector, style: ButtonStyle = .filled) -> UIButton {
+    private func makeButton(title: String, action: Selector, style: ButtonStyle = .filled, color: UIColor = .systemGreen) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         button.titleLabel?.font = .systemFont(ofSize: 16, weight: .medium)
@@ -188,13 +267,13 @@ class NativeDemoViewController: UIViewController {
 
         switch style {
         case .filled:
-            button.backgroundColor = .systemGreen
+            button.backgroundColor = color
             button.setTitleColor(.white, for: .normal)
         case .outlined:
             button.backgroundColor = .clear
             button.layer.borderWidth = 1
-            button.layer.borderColor = UIColor.systemGreen.cgColor
-            button.setTitleColor(.systemGreen, for: .normal)
+            button.layer.borderColor = color.cgColor
+            button.setTitleColor(color, for: .normal)
         }
         return button
     }

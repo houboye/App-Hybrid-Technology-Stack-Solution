@@ -20,12 +20,43 @@
   window.AppRouter = {
     navigate: function(url) {
       if (isIOS()) {
-        window.webkit.messageHandlers.router.postMessage(url);
+        window.webkit.messageHandlers.router.postMessage(JSON.stringify({ method: 'navigate', args: url }));
       } else if (isAndroid()) {
         window.AndroidBridge.navigate(url);
       } else {
         console.warn('[AppRouter] No native bridge available');
       }
+    },
+
+    removePage: function(route) {
+      if (isIOS()) {
+        window.webkit.messageHandlers.router.postMessage(JSON.stringify({ method: 'removePage', args: route }));
+      } else if (isAndroid()) {
+        window.AndroidBridge.removePage(route);
+      } else {
+        console.warn('[AppRouter] No native bridge available');
+      }
+    },
+
+    pop: function() {
+      if (isIOS()) {
+        window.webkit.messageHandlers.router.postMessage(JSON.stringify({ method: 'pop', args: null }));
+      } else if (isAndroid()) {
+        window.AndroidBridge.pop();
+      } else {
+        console.warn('[AppRouter] No native bridge available');
+      }
+    },
+
+    _lifecycleHandlers: [],
+
+    onNavigationEvent: function(event, handler) {
+      var entry = { event: event, handler: handler };
+      this._lifecycleHandlers.push(entry);
+      return function() {
+        var idx = AppRouter._lifecycleHandlers.indexOf(entry);
+        if (idx >= 0) AppRouter._lifecycleHandlers.splice(idx, 1);
+      };
     }
   };
 
@@ -138,6 +169,15 @@
         AppEventBus._pendingCallbacks[msg.callbackId](msg);
         delete AppEventBus._pendingCallbacks[msg.callbackId];
         return;
+      }
+
+      // Dispatch navigation lifecycle events to AppRouter handlers
+      if (msg.channel === 'navigationLifecycle' && msg.payload) {
+        AppRouter._lifecycleHandlers.forEach(function(entry) {
+          if (entry.event === msg.payload.event || entry.event === '*') {
+            entry.handler(msg.payload);
+          }
+        });
       }
 
       // Notify channel-specific handlers

@@ -33,7 +33,20 @@ import Foundation
 /// ```swift
 /// eventChannel.invokeMethod("onEventMessage", arguments: message.toJSONString())
 /// ```
+///
+/// PageData MethodChannel:
+/// ```swift
+/// let pageDataChannel = FlutterMethodChannel(name: "com.app.pagedata", binaryMessenger: engine.binaryMessenger)
+/// pageDataChannel.setMethodCallHandler { call, result in
+///     let response = PageDataBridge.shared.handleMethodCall(
+///         method: call.method,
+///         arguments: call.arguments as? String
+///     )
+///     result(response)
+/// }
+/// ```
 class FlutterMethodChannelBridge {
     static let eventChannelName = "com.app.eventbus"
     static let routerChannelName = "com.app.router"
+    static let pageDataChannelName = "com.app.pagedata"
 }

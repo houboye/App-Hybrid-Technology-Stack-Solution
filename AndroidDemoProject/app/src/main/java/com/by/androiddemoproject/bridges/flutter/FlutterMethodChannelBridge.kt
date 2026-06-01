@@ -35,8 +35,16 @@ package com.by.androiddemoproject.bridges.flutter
 //
 // To send TO Flutter:
 // eventChannel.invokeMethod("onEventMessage", message.toJSONString())
+//
+// PageData MethodChannel:
+// val pageDataChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.app.pagedata")
+// pageDataChannel.setMethodCallHandler { call, result ->
+//     val response = PageDataBridge.handleMethodCall(call.method, call.arguments as? String)
+//     result.success(response)
+// }
 
 object FlutterMethodChannelBridge {
     const val EVENT_CHANNEL_NAME = "com.app.eventbus"
     const val ROUTER_CHANNEL_NAME = "com.app.router"
+    const val PAGE_DATA_CHANNEL_NAME = "com.app.pagedata"
 }

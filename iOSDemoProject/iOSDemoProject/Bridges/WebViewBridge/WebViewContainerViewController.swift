@@ -31,6 +31,7 @@ class WebViewContainerViewController: UIViewController {
         // Register message handlers
         contentController.add(self, name: "eventBus")
         contentController.add(self, name: "router")
+        contentController.add(self, name: "pageData")
 
         // Inject bridge JS at document start
         let bridgeScript = WKUserScript(
@@ -206,7 +207,22 @@ extension WebViewContainerViewController: WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         switch message.name {
         case "router":
-            if let url = message.body as? String {
+            if let jsonString = message.body as? String,
+               let data = jsonString.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let method = json["method"] as? String {
+                let args = json["args"] as? String
+                switch method {
+                case "navigate":
+                    if let url = args { AppRouter.shared.navigate(to: url, from: self) }
+                case "removePage":
+                    if let route = args { AppRouter.shared.removePage(route: route) }
+                case "pop":
+                    AppRouter.shared.pop()
+                default:
+                    break
+                }
+            } else if let url = message.body as? String {
                 AppRouter.shared.navigate(to: url, from: self)
             }
         case "eventBus":
@@ -214,8 +230,33 @@ extension WebViewContainerViewController: WKScriptMessageHandler {
                let eventMessage = EventMessage.from(jsonString: jsonString) {
                 EventBus.shared.dispatch(message: eventMessage)
             }
+        case "pageData":
+            handlePageDataMessage(message)
         default:
             break
+        }
+    }
+
+    private func handlePageDataMessage(_ message: WKScriptMessage) {
+        guard let jsonString = message.body as? String,
+              let data = jsonString.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let method = json["method"] as? String,
+              let requestId = json["requestId"] as? String,
+              let payload = json["payload"] as? String else {
+            return
+        }
+
+        let result = PageDataBridge.shared.handleMethodCall(method: method, arguments: payload)
+        let escaped = (result ?? "null").replacingOccurrences(of: "'", with: "\\'")
+        let js: String
+        if result != nil {
+            js = "window.__onPageDataResponse('\(requestId)', '\(escaped)')"
+        } else {
+            js = "window.__onPageDataResponse('\(requestId)', null)"
+        }
+        DispatchQueue.main.async {
+            self.webView?.evaluateJavaScript(js, completionHandler: nil)
         }
     }
 }
